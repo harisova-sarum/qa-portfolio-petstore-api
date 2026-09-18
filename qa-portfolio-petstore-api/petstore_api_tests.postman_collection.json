@@ -1,0 +1,422 @@
+{
+  "info": {
+    "name": "Swagger Petstore API Tests",
+    "description": "Коллекция API-тестов для публичного демо-API Swagger Petstore (https://petstore.swagger.io/v2). Покрывает основные CRUD-сценарии для сущностей Pet, Store и User, включая позитивные и негативные проверки.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://petstore.swagger.io/v2" },
+    { "key": "petId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Pet",
+      "item": [
+        {
+          "name": "POST /pet — создать питомца (позитивный)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/pet",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 100001,\n  \"name\": \"Барсик\",\n  \"status\": \"available\",\n  \"photoUrls\": [\"https://example.com/photo.jpg\"],\n  \"category\": { \"id\": 1, \"name\": \"cats\" },\n  \"tags\": [{ \"id\": 1, \"name\": \"домашний\" }]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Тело ответа содержит переданное имя', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.name).to.eql('Барсик');",
+                  "});",
+                  "pm.test('id питомца возвращается и сохраняется для следующих запросов', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.id).to.be.a('number');",
+                  "    pm.collectionVariables.set('petId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pet/{petId} — получить питомца по id (позитивный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/pet/{{petId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Возвращённый id совпадает с запрошенным', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(String(json.id)).to.eql(String(pm.collectionVariables.get('petId')));",
+                  "});",
+                  "pm.test('Время ответа меньше 2 секунд', () => pm.expect(pm.response.responseTime).to.be.below(2000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pet/{petId} — несуществующий id (негативный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/pet/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 404 для несуществующего питомца', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pet/{petId} — нечисловой id (негативный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/pet/abc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Некорректный формат id обрабатывается без 5xx-ошибки', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /pet — обновить питомца (позитивный)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/pet",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{petId}},\n  \"name\": \"Барсик обновлённый\",\n  \"status\": \"sold\",\n  \"photoUrls\": [\"https://example.com/photo.jpg\"]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Поле status обновлено', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('sold');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pet/findByStatus — фильтр по статусу (позитивный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/pet/findByStatus?status=available"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ответ — массив', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Все элементы имеют статус available', () => {",
+                  "    const json = pm.response.json();",
+                  "    json.forEach(pet => pm.expect(pet.status).to.eql('available'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pet/findByStatus — некорректное значение status (негативный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/pet/findByStatus?status=неизвестный_статус"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('API не возвращает 5xx на некорректный параметр', () => {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /pet/{petId} — удалить питомца (позитивный)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/pet/{{petId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pet/{petId} — проверка удаления (негативный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/pet/{{petId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Удалённый питомец больше не найден (404)', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Store",
+      "item": [
+        {
+          "name": "GET /store/inventory — инвентарь по статусам (позитивный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/store/inventory"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ответ — объект с числовыми значениями', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /store/order — создать заказ (позитивный)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/store/order",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"petId\": 100001,\n  \"quantity\": 1,\n  \"status\": \"placed\",\n  \"complete\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Статус заказа placed', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('placed');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /store/order — некорректное количество (негативный)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/store/order",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 2,\n  \"petId\": 100001,\n  \"quantity\": -5,\n  \"status\": \"placed\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Отрицательное количество: API не должно возвращать 5xx', () => {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /store/order/{orderId} — несуществующий заказ (негативный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/store/order/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 404 для несуществующего заказа', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "POST /user — создать пользователя (позитивный)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/user",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 500001,\n  \"username\": \"qa_test_user\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"email\": \"qa_test_user@example.com\",\n  \"password\": \"Password123\",\n  \"phone\": \"1234567890\",\n  \"userStatus\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/{username} — получить пользователя (позитивный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/user/qa_test_user"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Email соответствует созданному', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.email).to.eql('qa_test_user@example.com');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/login — авторизация (позитивный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/user/login?username=qa_test_user&password=Password123"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ответ содержит сообщение об успешном логине', () => {",
+                  "    pm.expect(pm.response.text()).to.include('logged in');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/login — неверный пароль (негативный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/user/login?username=qa_test_user&password=WrongPassword"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('API отвечает без серверной ошибки 5xx на неверный пароль', () => {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /user/{username} — удалить пользователя (позитивный)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/user/qa_test_user"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус код 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/{username} — проверка удаления (негативный)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/user/qa_test_user"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Удалённый пользователь больше не найден (404)', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
